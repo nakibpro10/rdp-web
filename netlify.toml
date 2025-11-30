@@ -1,0 +1,11 @@
+[build]
+  # Netlify কে বলছে functions ফোল্ডার কোনটি
+  functions = "netlify/functions"
+  # Netlify কে বলছে deploy করার জন্য মূল ফাইলগুলো public ফোল্ডারে আছে
+  publish = "public"
+
+# এই অংশটি ফ্রন্টএন্ডের /api/ রিকোয়েস্টগুলোকে functions ফোল্ডারের দিকে রিডাইরেক্ট করে
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

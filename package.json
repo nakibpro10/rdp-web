@@ -1,0 +1,11 @@
+{
+  "name": "rdp-netlify-controller",
+  "version": "1.0.0",
+  "description": "Controller for GitHub Actions RDP via Tailscale",
+  "main": "index.js",
+  "dependencies": {
+    "@octokit/rest": "^20.0.0",
+    "adm-zip": "^0.5.10",
+    "node-fetch": "^2.6.7"
+  }
+}
