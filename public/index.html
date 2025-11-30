@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub RDP Controller</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #f0f2f5; }
+        .box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+        button { padding: 15px 30px; font-size: 16px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; }
+        button:disabled { background: #ccc; }
+        #output { margin-top: 20px; text-align: left; background: #343a40; color: #00ff7f; padding: 15px; border-radius: 5px; display: none; overflow-wrap: break-word; }
+        .loading::after { content: '...'; animation: dot-animation 1s infinite step-start; }
+        @keyframes dot-animation { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Remote Desktop Session</h2>
+        <p>Click below to start a temporary Windows VM.</p>
+        <button id="startBtn" onclick="startRDP()">Start Machine</button>
+        <p id="status" style="margin-top: 20px; color: #666;"></p>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        async function startRDP() {
+            const btn = document.getElementById('startBtn');
+            const status = document.getElementById('status');
+            const output = document.getElementById('output');
+            
+            btn.disabled = true;
+            status.innerHTML = "<span class='loading'>Initializing workflow</span>. Please wait up to 5 minutes.";
+            output.style.display = 'none';
+
+            try {
+                // Workflow শুরু করার জন্য start.js কে কল
+                const res = await fetch('/api/start', { method: 'POST' });
+                const data = await res.json();
+
+                if (!data.success) throw new Error(data.message || 'Workflow start failed.');
+
+                status.innerHTML = `<span class='loading'>Machine starting</span>. Run ID: ${data.run_id}`;
+                
+                // স্ট্যাটাস চেক করা (Polling)
+                const poll = setInterval(async () => {
+                    const check = await fetch(`/api/status?run_id=${data.run_id}`);
+                    const result = await check.json();
+
+                    if (result.status === 'ready') {
+                        clearInterval(poll);
+                        status.innerHTML = "✅ **RDP Session Ready!** Connect now.";
+                        output.style.display = 'block';
+                        output.innerHTML = `
+                            <strong>Address:</strong> ${result.data.ip}<br>
+                            <strong>Username:</strong> ${result.data.user}<br>
+                            <strong>Password:</strong> ${result.data.pass}<br><br>
+                            <small>This session will close automatically in 1 hour.</small>
+                        `;
+                        btn.disabled = false;
+                        btn.innerText = "Start Another";
+                    } else if (result.status === 'failed') {
+                        clearInterval(poll);
+                        status.innerHTML = "❌ Setup Failed. Check GitHub Actions logs for details.";
+                        btn.disabled = false;
+                    } else {
+                        status.innerHTML = `<span class='loading'>Workflow in progress</span>... Checking status.`;
+                    }
+                }, 15000); // প্রতি ১৫ সেকেন্ডে চেক করবে
+
+            } catch (err) {
+                status.innerText = "Error: " + (err.message || 'An unknown error occurred.');
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
